@@ -95,3 +95,16 @@
     transform: none;
   }
 }
+
+.vertexUserAvatar {
+  width: 53px !important;
+  height: 53px !important;
+  flex: 0 0 53px;
+}
+
+.vertexUserAvatar img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
