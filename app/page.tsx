@@ -173,7 +173,7 @@ export default function Home() {
     <div className="vertexHomeCanvas">
       <div className="vertexHomeFrame">
         <header className="relative z-10 border-b border-[#EEE1DA]">
-          <div className="mx-auto flex min-h-[98px] w-full max-w-[1240px] flex-wrap items-center gap-y-3 px-5 py-4 sm:flex-nowrap sm:px-[42px] sm:py-0">
+          <div className="mx-auto flex min-h-[98px] w-full max-w-[1024px] flex-wrap items-center gap-y-3 px-5 py-4 sm:flex-nowrap sm:px-[42px] sm:py-0">
             <Link
               href="/"
               aria-label="Vertex home"
@@ -281,7 +281,7 @@ export default function Home() {
           </section>
 
           <section id="courses" aria-labelledby="courses-heading" className="pt-[51px]">
-            <div className="mx-auto w-full max-w-[1240px] px-5 sm:px-[52px]">
+            <div className="mx-auto w-full max-w-[1024px] px-5 sm:px-[52px]">
               <div className="flex items-center justify-between gap-5">
                 <h2
                   id="courses-heading"
