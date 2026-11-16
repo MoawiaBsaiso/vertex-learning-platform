@@ -1,7 +1,8 @@
+import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import {
   BarChartIcon,
   BellIcon,
@@ -10,7 +11,6 @@ import {
   SearchIcon,
   VertexLogo,
 } from "@/components/icons/VertexIcons";
-import profileImage from "@/public/images/vertex-profile.png";
 import "./home.css";
 
 export const metadata: Metadata = {
@@ -209,12 +209,35 @@ export default function Home() {
               >
                 <BellIcon size={25} />
               </button>
-              <Image
-                src={profileImage}
-                alt="Vertex learner profile"
-                className="h-[53px] w-[53px] rounded-full object-cover"
-                sizes="53px"
-              />
+              <Suspense fallback={<div className="h-[53px] w-[53px]" />}>
+                <Show when="signed-out">
+                  <div className="flex items-center gap-3">
+                    <SignInButton mode="modal">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-sm px-3 py-2 text-[15px] font-medium text-[#111111] transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                      >
+                        Sign in
+                      </button>
+                    </SignInButton>
+                    <SignUpButton mode="modal">
+                      <button
+                        type="button"
+                        className="cursor-pointer rounded-sm bg-primary-500 px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2"
+                      >
+                        Sign up
+                      </button>
+                    </SignUpButton>
+                  </div>
+                </Show>
+                <Show when="signed-in">
+                  <UserButton
+                    appearance={{
+                      elements: { avatarBox: "vertexUserAvatar" },
+                    }}
+                  />
+                </Show>
+              </Suspense>
             </div>
           </div>
         </header>
