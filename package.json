@@ -4,15 +4,26 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:studio": "npm --prefix studio run dev",
     "build": "next build",
+    "build:studio": "npm --prefix studio run build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "typecheck:studio": "npm --prefix studio run typecheck",
+    "typegen": "npm --prefix studio run typegen"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.10.0",
+    "@sanity/client": "^7.28.0",
+    "@sanity/image-url": "^2.2.0",
+    "@sanity/vision": "^5.31.2",
     "next": "16.4.6",
+    "next-sanity": "^13.4.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "sanity": "^5.31.2",
+    "styled-components": "^6.6.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
