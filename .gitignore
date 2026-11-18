@@ -44,6 +44,12 @@ next-env.d.ts
 dist/
 build/
 
+# standalone Sanity Studio
+studio/node_modules/
+studio/.sanity/
+studio/dist/
+studio/schema.json
+
 # agent skill mirrors (canonical skills live in .agents/skills)
 /.claude/
 /.grok/
