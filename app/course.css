@@ -1,0 +1,79 @@
+.vertexCourseCanvas {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: clip;
+  background-color: #fffaf7;
+}
+
+.vertexCourseFrame {
+  position: relative;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 23%, rgba(255, 242, 234, 0.72), transparent 34%),
+    #fffdfb;
+}
+
+.vertexCourseFrame::before,
+.vertexCourseFrame::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  width: 52px;
+  content: "";
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(226, 209, 198, 0.45) 0,
+    rgba(226, 209, 198, 0.45) 1px,
+    transparent 1px,
+    transparent 9px
+  );
+}
+
+.vertexCourseFrame::before {
+  left: 0;
+}
+
+.vertexCourseFrame::after {
+  right: 0;
+}
+
+.vertexCoursePeachBlock {
+  position: absolute;
+  bottom: 0;
+  width: 52px;
+  height: 96px;
+  background: rgba(247, 217, 203, 0.9);
+  pointer-events: none;
+}
+
+.vertexCoursePeachBlockLeft {
+  left: 0;
+  border-top-right-radius: 26px;
+}
+
+.vertexCoursePeachBlockRight {
+  right: 0;
+  width: 46px;
+  height: 94px;
+  border-top-left-radius: 26px;
+}
+
+.vertexCourseAccentBar {
+  position: absolute;
+  bottom: 44px;
+  left: -24px;
+  width: 172px;
+  height: 26px;
+  border-radius: 0 9999px 9999px 0;
+  background: #ec6435;
+  pointer-events: none;
+}
+
+@media (max-width: 1023px) {
+  .vertexCourseFrame::before,
+  .vertexCourseFrame::after {
+    display: none;
+  }
+}

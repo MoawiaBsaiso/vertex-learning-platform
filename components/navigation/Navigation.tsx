@@ -64,12 +64,17 @@ export interface BreadcrumbItem {
 export interface BreadcrumbsProps {
   items: BreadcrumbItem[];
   className?: string;
+  textClassName?: string;
 }
 
-export function Breadcrumbs({ items, className = "" }: BreadcrumbsProps) {
+export function Breadcrumbs({
+  items,
+  className = "",
+  textClassName = "text-[13px]",
+}: BreadcrumbsProps) {
   return (
     <nav aria-label="Breadcrumb" className={className}>
-      <ol className="flex flex-wrap items-center gap-2 text-[13px] leading-5 text-neutral-500">
+      <ol className={`flex flex-wrap items-center gap-2 leading-5 text-neutral-500 ${textClassName}`}>
         {items.map((item, idx) => {
           const isLast = idx === items.length - 1;
           return (
