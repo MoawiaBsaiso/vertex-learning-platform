@@ -1,16 +1,10 @@
-import { Suspense } from "react";
 import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
-import {
-  BarChartIcon,
-  BellIcon,
-  ClockIcon,
-  DocumentIcon,
-  SearchIcon,
-  VertexLogo,
-} from "@/components/icons/VertexIcons";
+import { SearchIcon } from "@/components/icons/VertexIcons";
+import { CourseCard } from "@/components/course/CourseCard";
+import { SiteHeader } from "@/components/navigation/SiteHeader";
+import { getCourses } from "@/sanity/lib/data";
 import "./home.css";
 
 export const metadata: Metadata = {
@@ -19,119 +13,7 @@ export const metadata: Metadata = {
     "Search your learning in plain English and find the exact lessons across all your courses.",
 };
 
-const courses = [
-  {
-    brand: "next",
-    title: "Next.js for Production",
-    description:
-      "Build scalable, high-performance web applications with Next.js.",
-    level: "Intermediate",
-    duration: "18h 24m",
-    modules: "12 modules",
-  },
-  {
-    brand: "docker",
-    title: "Docker Essentials",
-    description:
-      "Containerize applications and streamline your development workflow.",
-    level: "Beginner",
-    duration: "10h 12m",
-    modules: "8 modules",
-  },
-  {
-    brand: "typescript",
-    title: "TypeScript Deep Dive",
-    description:
-      "Go beyond the basics and write safer, more expressive code.",
-    level: "Intermediate",
-    duration: "14h 36m",
-    modules: "10 modules",
-  },
-] as const;
-
 const skylineHeights = [88, 121, 154, 188, 132, 97, 76, 113, 153, 188, 96, 127, 145];
-
-function CourseMark({ brand }: { brand: (typeof courses)[number]["brand"] }) {
-  if (brand === "next") {
-    return (
-      <svg
-        viewBox="0 0 74 74"
-        className="h-[74px] w-[74px]"
-        role="img"
-        aria-label="Next.js"
-      >
-        <defs>
-          <linearGradient id="next-mark" x1="9" y1="5" x2="67" y2="70">
-            <stop stopColor="#171717" />
-            <stop offset="1" stopColor="#020202" />
-          </linearGradient>
-        </defs>
-        <rect width="74" height="74" rx="10" fill="url(#next-mark)" />
-        <path
-          d="M19.5 54V20.5L47.5 54V20.5"
-          fill="none"
-          stroke="white"
-          strokeWidth="5.2"
-          strokeLinejoin="miter"
-        />
-        <path d="M47.5 44.5 61 61" stroke="white" strokeOpacity=".22" strokeWidth="5.2" />
-      </svg>
-    );
-  }
-
-  if (brand === "docker") {
-    return (
-      <svg
-        viewBox="0 0 74 74"
-        className="h-[74px] w-[74px]"
-        role="img"
-        aria-label="Docker"
-      >
-        <g fill="#3CA9F4" stroke="#0F172A" strokeWidth="1.35">
-          <rect x="12" y="29" width="9" height="8" rx="1" />
-          <rect x="23" y="29" width="9" height="8" rx="1" />
-          <rect x="34" y="29" width="9" height="8" rx="1" />
-          <rect x="45" y="29" width="9" height="8" rx="1" />
-          <rect x="23" y="19" width="9" height="8" rx="1" />
-          <rect x="34" y="19" width="9" height="8" rx="1" />
-          <rect x="34" y="9" width="9" height="8" rx="1" />
-          <path d="M8 39h48c3 0 5-1 7-3 1.8 7.5-3.2 12.8-9 13.4C50.2 59.7 40.8 65 28.5 65 17 65 9.7 56.5 8 39Z" />
-          <path d="M61 34c2.8-2.7 6.1-2.4 8.5-1.2-1.2 3.3-4.2 5.7-8.4 5.5" />
-        </g>
-        <circle cx="14.5" cy="44.5" r="1.45" fill="#0F172A" />
-        <path d="M9 49h50" stroke="white" strokeOpacity=".65" strokeWidth="1.4" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg
-      viewBox="0 0 74 74"
-      className="h-[74px] w-[74px]"
-      role="img"
-      aria-label="TypeScript"
-    >
-      <defs>
-        <linearGradient id="typescript-mark" x1="7" y1="5" x2="67" y2="69">
-          <stop stopColor="#3D91E8" />
-          <stop offset="1" stopColor="#286ABD" />
-        </linearGradient>
-      </defs>
-      <rect width="74" height="74" rx="10" fill="url(#typescript-mark)" />
-      <text
-        x="10"
-        y="52"
-        fill="white"
-        fontFamily="Arial, sans-serif"
-        fontSize="34"
-        fontWeight="700"
-        letterSpacing="-2"
-      >
-        TS
-      </text>
-    </svg>
-  );
-}
 
 function ArrowRight({ className = "" }: { className?: string }) {
   return (
@@ -168,79 +50,20 @@ function Star() {
   );
 }
 
-export default function Home() {
+export default async function Home() {
+  const allCourses = await getCourses();
+  const courses = [...allCourses]
+    .sort(
+      (a, b) =>
+        Number(b.popular ?? false) - Number(a.popular ?? false) ||
+        (a.title ?? "").localeCompare(b.title ?? ""),
+    )
+    .slice(0, 3);
+
   return (
     <div className="vertexHomeCanvas">
       <div className="vertexHomeFrame">
-        <header className="relative z-10 border-b border-[#EEE1DA]">
-          <div className="mx-auto flex min-h-[98px] w-full max-w-[1024px] flex-wrap items-center gap-y-3 px-5 py-4 sm:flex-nowrap sm:px-[42px] sm:py-0">
-            <Link
-              href="/"
-              aria-label="Vertex home"
-              className="shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
-            >
-              <VertexLogo className="gap-2.5 [&>span]:text-[24px] [&>svg]:h-[34px] [&>svg]:w-[36px]" />
-            </Link>
-
-            <nav
-              aria-label="Primary navigation"
-              className="order-3 flex w-full items-center gap-8 text-[15px] text-[#111111] sm:order-none sm:ml-[62px] sm:w-auto sm:gap-[43px]"
-            >
-              <Link
-                href="#courses"
-                aria-current="page"
-                className="rounded-xs transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
-              >
-                Courses
-              </Link>
-              <Link
-                href="/my-learning"
-                className="rounded-xs transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
-              >
-                My Learning
-              </Link>
-            </nav>
-
-            <div className="ml-auto flex items-center gap-[18px] sm:gap-[21px]">
-              <button
-                type="button"
-                aria-label="Open notifications"
-                className="inline-flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[#30343B] transition-colors hover:bg-[#FFF3EC] hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
-              >
-                <BellIcon size={25} />
-              </button>
-              <Suspense fallback={<div className="h-[53px] w-[53px]" />}>
-                <Show when="signed-out">
-                  <div className="flex items-center gap-3">
-                    <SignInButton mode="modal">
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-sm px-3 py-2 text-[15px] font-medium text-[#111111] transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
-                      >
-                        Sign in
-                      </button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <button
-                        type="button"
-                        className="cursor-pointer rounded-sm bg-primary-500 px-4 py-2 text-[15px] font-medium text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2"
-                      >
-                        Sign up
-                      </button>
-                    </SignUpButton>
-                  </div>
-                </Show>
-                <Show when="signed-in">
-                  <UserButton
-                    appearance={{
-                      elements: { avatarBox: "vertexUserAvatar" },
-                    }}
-                  />
-                </Show>
-              </Suspense>
-            </div>
-          </div>
-        </header>
+        <SiteHeader coursesActive />
 
         <main>
           <section
@@ -313,7 +136,7 @@ export default function Home() {
                   All Courses
                 </h2>
                 <Link
-                  href="#courses"
+                  href="/courses"
                   className="inline-flex items-center gap-3 rounded-xs text-[14px] text-[#EF542D] transition-colors hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
                 >
                   <span>View all courses</span>
@@ -323,33 +146,7 @@ export default function Home() {
 
               <div className="mt-[25px] grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {courses.map((course) => (
-                  <article
-                    key={course.title}
-                    className="vertexHomeCourseCard flex min-h-[374px] flex-col rounded-lg border border-[#E9DBD3] bg-white/55 px-[26px] pb-[27px] pt-[31px]"
-                  >
-                    <CourseMark brand={course.brand} />
-                    <h3 className="mt-[27px] font-display text-[22px] leading-[30px] tracking-[-0.025em] text-[#121212]">
-                      {course.title}
-                    </h3>
-                    <p className="mt-[13px] text-[14px] leading-[25px] text-[#5D6574]">
-                      {course.description}
-                    </p>
-
-                    <div className="-mx-[9px] mt-auto flex items-center justify-between gap-2 border-t border-[#E9DBD3] px-[9px] pt-[20px] text-[10px] text-[#4F5868]">
-                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                        <BarChartIcon size={16} className="shrink-0" />
-                        {course.level}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                        <ClockIcon size={16} className="shrink-0" />
-                        {course.duration}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                        <DocumentIcon size={16} className="shrink-0" />
-                        {course.modules}
-                      </span>
-                    </div>
-                  </article>
+                  <CourseCard key={course._id} course={course} />
                 ))}
               </div>
             </div>
