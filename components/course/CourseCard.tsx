@@ -1,5 +1,8 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import posthog from "posthog-js";
 
 import {
   BarChartIcon,
@@ -19,6 +22,14 @@ export function CourseCard({ course }: { course: Course }) {
   return (
     <Link
       href={`/courses/${course.slug ?? ""}`}
+      onClick={() =>
+        posthog.capture("course_opened", {
+          course_id: course._id,
+          course_slug: course.slug ?? "unknown",
+          course_level: course.level ?? "unspecified",
+          module_count: course.moduleCount,
+        })
+      }
       className="vertexCourseCard flex min-h-[374px] flex-col rounded-lg border border-[#E9DBD3] bg-white/55 px-[26px] pb-[27px] pt-[31px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
     >
       {course.coverImage && (

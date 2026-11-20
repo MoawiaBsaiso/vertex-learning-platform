@@ -214,7 +214,10 @@ export default async function CoursePage({ params }: CoursePageProps) {
                       Continue Learning
                       <ArrowRightIcon size={18} />
                     </Link>
-                    <BookmarkButton />
+                    <BookmarkButton
+                      courseId={course._id}
+                      courseSlug={course.slug ?? slug}
+                    />
                   </div>
                 )}
               </div>
@@ -285,7 +288,12 @@ export default async function CoursePage({ params }: CoursePageProps) {
               </p>
             </div>
 
-            <CourseContent modules={modules} className="mt-5" />
+            <CourseContent
+              courseId={course._id}
+              courseSlug={course.slug ?? slug}
+              modules={modules}
+              className="mt-5"
+            />
           </section>
         </main>
 

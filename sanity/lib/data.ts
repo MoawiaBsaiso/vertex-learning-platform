@@ -1,3 +1,6 @@
+import { SeverityNumber } from '@opentelemetry/api-logs'
+
+import { posthogLogger } from '@/instrumentation'
 import type {
   CATEGORIES_LIST_QUERY_RESULT,
   COURSES_LIST_QUERY_RESULT,
@@ -156,6 +159,15 @@ export async function getCourses() {
   const courses = await sanityFetch({
     query: COURSES_LIST_QUERY,
     tags: ['course'],
+  })
+
+  posthogLogger?.emit({
+    body: 'course_catalog_loaded',
+    severityNumber: SeverityNumber.INFO,
+    attributes: {
+      course_count: courses.length,
+      source: 'sanity',
+    },
   })
 
   return courses.map(withCourseStats)

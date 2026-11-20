@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import posthog from "posthog-js";
 import { useState } from "react";
 
 import { ChevronDownIcon } from "@/components/icons/VertexIcons";
@@ -21,20 +22,34 @@ export interface CourseContentModule {
 }
 
 export interface CourseContentProps {
+  courseId: string;
+  courseSlug: string;
   modules: CourseContentModule[];
   className?: string;
 }
 
 const VISIBLE_MODULES = 6;
 
-export function CourseContent({ modules, className = "" }: CourseContentProps) {
+export function CourseContent({
+  courseId,
+  courseSlug,
+  modules,
+  className = "",
+}: CourseContentProps) {
   const [showAll, setShowAll] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
 
   const visibleModules = showAll ? modules : modules.slice(0, VISIBLE_MODULES);
   const hiddenCount = modules.length - VISIBLE_MODULES;
 
-  const toggleModule = (key: string) => {
+  const toggleModule = (key: string, isOpen: boolean) => {
+    posthog.capture("course_module_toggled", {
+      course_id: courseId,
+      course_slug: courseSlug,
+      module_key: key,
+      is_expanded: !isOpen,
+    });
+
     setOpenKeys((current) =>
       current.includes(key)
         ? current.filter((item) => item !== key)
@@ -54,7 +69,7 @@ export function CourseContent({ modules, className = "" }: CourseContentProps) {
               <li key={module._key}>
                 <button
                   type="button"
-                  onClick={() => toggleModule(module._key)}
+                  onClick={() => toggleModule(module._key, isOpen)}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   className="flex w-full cursor-pointer items-center gap-4 px-5 py-[18px] text-left transition-colors hover:bg-[#FFF9F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400 sm:gap-5 sm:px-6"
@@ -92,6 +107,15 @@ export function CourseContent({ modules, className = "" }: CourseContentProps) {
                       >
                         <Link
                           href={`/lessons/${lesson.slug}`}
+                          onClick={() =>
+                            posthog.capture("lesson_started", {
+                              course_id: courseId,
+                              course_slug: courseSlug,
+                              module_key: module._key,
+                              lesson_id: lesson._id,
+                              lesson_slug: lesson.slug,
+                            })
+                          }
                           className="flex items-center justify-between gap-4 py-3 pl-[64px] pr-5 transition-colors hover:bg-[#FFF9F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-400 sm:pl-[76px] sm:pr-6"
                         >
                           <span className="min-w-0 truncate font-display text-[15px] text-[#2C313A]">

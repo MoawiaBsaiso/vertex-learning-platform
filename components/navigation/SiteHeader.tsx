@@ -1,6 +1,9 @@
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+"use client";
+
+import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
-import { Suspense } from "react";
+import posthog from "posthog-js";
+import { Suspense, useEffect, useRef } from "react";
 
 import { BellIcon, VertexLogo } from "@/components/icons/VertexIcons";
 
@@ -16,6 +19,36 @@ export function SiteHeader({
   font = "sans",
 }: SiteHeaderProps) {
   const serif = font === "serif";
+  const { isLoaded, isSignedIn, user } = useUser();
+  const identifiedUserId = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (isSignedIn && user) {
+      if (identifiedUserId.current === user.id) return;
+
+      if (identifiedUserId.current) {
+        posthog.reset();
+      }
+
+      const personProperties: Record<string, string> = {};
+      const email = user.primaryEmailAddress?.emailAddress;
+
+      if (email) personProperties.email = email;
+      if (user.fullName) personProperties.name = user.fullName;
+
+      posthog.identify(user.id, personProperties);
+      identifiedUserId.current = user.id;
+      return;
+    }
+
+    if (identifiedUserId.current) {
+      posthog.reset();
+    }
+
+    identifiedUserId.current = null;
+  }, [isLoaded, isSignedIn, user]);
 
   return (
     <header className="relative z-10 border-b border-[#EEE1DA]">
