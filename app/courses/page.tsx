@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { CourseCard } from "@/components/course/CourseCard";
 import { SiteHeader } from "@/components/navigation/SiteHeader";
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     "Browse every Vertex course and find the one that fits what you want to learn.",
 };
 
-export default async function CoursesPage() {
+async function CoursesPageContent() {
   const allCourses = await getCourses();
   const courses = [...allCourses].sort(
     (a, b) =>
@@ -53,5 +54,29 @@ export default async function CoursesPage() {
         )}
       </main>
     </div>
+  );
+}
+
+function CoursesPageFallback() {
+  return (
+    <div className="min-h-screen bg-[#fffaf7]" aria-busy="true">
+      <SiteHeader coursesHref="/courses" coursesActive font="serif" />
+      <main className="mx-auto w-full max-w-[1024px] px-5 pb-20 pt-12 sm:px-[52px]">
+        <h1 className="font-display text-[32px] leading-tight tracking-[-0.025em] text-[#111111] sm:text-[38px]">
+          All Courses
+        </h1>
+        <p className="mt-4 text-[15px] leading-7 text-[#5D6574]">
+          Loading courses…
+        </p>
+      </main>
+    </div>
+  );
+}
+
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<CoursesPageFallback />}>
+      <CoursesPageContent />
+    </Suspense>
   );
 }

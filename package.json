@@ -20,6 +20,7 @@
     "@sanity/vision": "^5.31.2",
     "next": "16.4.6",
     "next-sanity": "^13.4.0",
+    "posthog-js": "^1.453.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sanity": "^5.31.2",
