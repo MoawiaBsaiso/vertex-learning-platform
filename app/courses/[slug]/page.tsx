@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { BookmarkButton } from "@/components/course/BookmarkButton";
+import { CourseViewed } from "@/components/analytics/CourseViewed";
 import {
   CourseContent,
   type CourseContentModule,
@@ -84,7 +86,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function CoursePage({ params }: CoursePageProps) {
+async function CoursePageContent({ params }: CoursePageProps) {
   const { slug } = await params;
   const course = await getCourseBySlug(slug);
 
@@ -145,6 +147,11 @@ export default async function CoursePage({ params }: CoursePageProps) {
         </div>
 
         <main>
+          <CourseViewed
+            courseId={course._id}
+            courseSlug={slug}
+            courseTitle={course.title ?? slug}
+          />
           <section className="mx-auto max-w-[1024px] px-5 pt-5 sm:px-16">
             <div className="grid gap-10 lg:grid-cols-[282px_minmax(0,1fr)] lg:gap-[58px]">
               <div className="relative aspect-[282/324] w-full max-w-[460px] overflow-hidden rounded-2xl bg-[#F1E9E4] lg:max-w-none">
@@ -214,7 +221,10 @@ export default async function CoursePage({ params }: CoursePageProps) {
                       Continue Learning
                       <ArrowRightIcon size={18} />
                     </Link>
-                    <BookmarkButton />
+                    <BookmarkButton
+                      courseSlug={slug}
+                      courseTitle={course.title ?? undefined}
+                    />
                   </div>
                 )}
               </div>
@@ -328,5 +338,28 @@ export default async function CoursePage({ params }: CoursePageProps) {
         </div>
       </div>
     </div>
+  );
+}
+
+function CoursePageFallback() {
+  return (
+    <div className="vertexCourseCanvas" aria-busy="true">
+      <div className="vertexCourseFrame">
+        <SiteHeader font="serif" coursesHref="/courses" />
+        <main className="mx-auto max-w-[1024px] px-5 py-16 sm:px-16">
+          <p className="font-display text-[18px] text-[#596171]">
+            Loading course…
+          </p>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+export default function CoursePage({ params }: CoursePageProps) {
+  return (
+    <Suspense fallback={<CoursePageFallback />}>
+      <CoursePageContent params={params} />
+    </Suspense>
   );
 }

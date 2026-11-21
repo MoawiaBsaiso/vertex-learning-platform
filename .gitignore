@@ -54,3 +54,4 @@ studio/schema.json
 /.claude/
 /.grok/
 /agent/
+.env.local
