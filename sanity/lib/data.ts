@@ -102,12 +102,15 @@ function buildLessonContext(course: LessonCourse | null, lessonId: string) {
   const labelFor = (entry: (typeof entries)[number]) =>
     `${entry.moduleIndex + 1}.${entry.lessonIndex + 1}`
   const lessonLabel = labelFor(current)
+  const durationLabelFor = (lesson: LessonCourseLesson) =>
+    formatDuration(lesson.duration)
 
   return {
     course: {
       _id: course._id,
-      title: course.title,
-      slug: course.slug,
+      title: course.title ?? "",
+      slug: course.slug ?? "",
+      summary: course.summary ?? null,
       level: course.level,
       icon: course.icon,
       instructor: course.instructor
@@ -129,17 +132,42 @@ function buildLessonContext(course: LessonCourse | null, lessonId: string) {
     },
     module: {
       _key: current.module._key,
-      title: current.module.title,
+      title: current.module.title ?? "",
       summary: current.module.summary,
     },
     moduleNumber: current.moduleIndex + 1,
     lessonNumber: current.lessonIndex + 1,
     lessonLabel,
+    currentLessonId: lessonId,
+    modules: modules.map((module, moduleIndex) => {
+      const moduleLessons = (module.lessons ?? []).filter(
+        (lesson): lesson is LessonCourseLesson => lesson !== null,
+      )
+
+      return {
+        _key: module._key,
+        title: module.title ?? "",
+        durationLabel: formatDuration(
+          moduleLessons.reduce(
+            (total, lesson) => total + (lesson.duration ?? 0),
+            0,
+          ),
+        ),
+        moduleNumber: moduleIndex + 1,
+        lessons: moduleLessons.map((lesson) => ({
+          _id: lesson._id,
+          title: lesson.title ?? "",
+          slug: lesson.slug ?? "",
+          durationLabel: durationLabelFor(lesson),
+        })),
+      }
+    }),
     previousLesson: previous
       ? {
           title: previous.lesson.title,
           slug: previous.lesson.slug,
           lessonLabel: labelFor(previous),
+          durationLabel: durationLabelFor(previous.lesson),
         }
       : null,
     nextLesson: next
@@ -147,6 +175,7 @@ function buildLessonContext(course: LessonCourse | null, lessonId: string) {
           title: next.lesson.title,
           slug: next.lesson.slug,
           lessonLabel: labelFor(next),
+          durationLabel: durationLabelFor(next.lesson),
         }
       : null,
   }

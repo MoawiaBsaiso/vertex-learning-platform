@@ -39,6 +39,9 @@ export function HomeSearchForm() {
         id="home-search"
         name="q"
         type="search"
+        required
+        minLength={2}
+        maxLength={200}
         placeholder="Ask anything about your learning..."
         className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-neutral-900 outline-none placeholder:text-[#949AAA] sm:text-[20px]"
       />

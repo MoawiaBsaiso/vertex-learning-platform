@@ -133,6 +133,7 @@ export const LESSON_BY_SLUG_QUERY = defineQuery(`*[
     _id,
     title,
     "slug": slug.current,
+    summary,
     level,
     icon,
     instructor->{
@@ -154,7 +155,8 @@ export const LESSON_BY_SLUG_QUERY = defineQuery(`*[
       lessons[]->{
         _id,
         title,
-        "slug": slug.current
+        "slug": slug.current,
+        duration
       }
     }
   }
