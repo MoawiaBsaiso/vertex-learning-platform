@@ -145,7 +145,7 @@ async function LessonPageContent({ params }: LessonPageProps) {
             courseSlug={context?.course.slug ?? ""}
           />
 
-          <div className="mx-auto max-w-[1024px] px-5 pb-14 pt-6 sm:px-16">
+          <div className="mx-auto max-w-[1240px] px-5 pb-14 pt-6 sm:px-16">
             <div className="grid gap-8 lg:grid-cols-[247px_minmax(0,1fr)] lg:gap-x-[35px]">
               {context && (
                 <div className="lg:pl-[10px]">
