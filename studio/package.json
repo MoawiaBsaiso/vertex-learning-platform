@@ -9,6 +9,8 @@
     "deploy": "sanity deploy",
     "typecheck": "tsc --noEmit",
     "extract-schema": "tsx --env-file=.env.local scripts/extract-schema.ts",
+    "ingest:videos": "tsx --env-file=.env.local scripts/ingest-videos.ts",
+    "test:video-ingestion": "tsx --test scripts/video-ingestion/*.test.ts",
     "typegen": "npm run extract-schema && sanity typegen generate"
   },
   "dependencies": {
@@ -20,10 +22,12 @@
     "styled-components": "^6.6.0"
   },
   "devDependencies": {
+    "@sanity/client": "^7.28.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "youtube-transcript-plus": "^2.0.5"
   }
 }

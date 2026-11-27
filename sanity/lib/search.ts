@@ -7,6 +7,7 @@ import { client } from './client'
 export const SEARCH_HYDRATION_QUERY = defineQuery(`{
   "courses": *[
     _type == "course" &&
+    !(_id in path("drafts.**")) &&
     _id in $courseIds
   ] {
     _id,
@@ -23,6 +24,7 @@ export const SEARCH_HYDRATION_QUERY = defineQuery(`{
   },
   "lessons": *[
     _type == "lesson" &&
+    !(_id in path("drafts.**")) &&
     _id in $lessonIds
   ] {
     _id,
@@ -36,6 +38,7 @@ export const SEARCH_HYDRATION_QUERY = defineQuery(`{
   },
   "videos": *[
     _type == "video" &&
+    !(_id in path("drafts.**")) &&
     _id in $videoIds
   ] {
     _id,
@@ -57,12 +60,14 @@ export const SEARCH_HYDRATION_QUERY = defineQuery(`{
 
 export const SEARCH_KEYWORD_SELECTORS_QUERY = defineQuery(`*[
   _type == "lesson" &&
+  !(_id in path("drafts.**")) &&
   count($terms[
     ^.title match @ ||
     pt::text(^.notes) match @ ||
     ^.keyPoints[] match @
   ]) > 0
 ] {
+  "kind": "lesson",
   "lessonId": _id,
   "placements": *[
     _type == "course" &&
@@ -72,6 +77,35 @@ export const SEARCH_KEYWORD_SELECTORS_QUERY = defineQuery(`*[
     modules[]{
       _key,
       "lessonIds": lessons[]._ref
+    }
+  }
+} + *[
+  _type == "video" &&
+  !(_id in path("drafts.**")) &&
+  (
+    count($terms[^.chapters[].label match @]) > 0 ||
+    count($terms[^.chunks[].text match @]) > 0
+  )
+] {
+  "kind": "video",
+  "videoId": _id,
+  "chapterStarts": chapters[count($terms[^.label match @]) > 0][].startSeconds,
+  "chunkStarts": chunks[count($terms[^.text match @]) > 0][].startSeconds,
+  "placements": *[
+    _type == "lesson" &&
+    !(_id in path("drafts.**")) &&
+    videoUrl == ^.url
+  ] {
+    "lessonId": _id,
+    "placements": *[
+      _type == "course" &&
+      references(^._id)
+    ] {
+      "courseId": _id,
+      modules[]{
+        _key,
+        "lessonIds": lessons[]._ref
+      }
     }
   }
 }`)

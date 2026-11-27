@@ -5,12 +5,16 @@ import type { SanityImageSource } from "@sanity/image-url";
 import { generateText, isStepCount, Output } from "ai";
 
 import {
+  lessonSelectorSchema,
   normalizeSearchSelectors,
+  SEARCH_RESULT_LIMIT,
   searchPlanSchema,
   searchResponseSchema,
+  videoSelectorSchema,
   type SearchPlan,
   type SearchResponse,
   type SearchSelector,
+  type SearchSource,
   type SearchStatusPhase,
   type VerifiedSearchResult,
 } from "@/lib/search/schema";
@@ -33,9 +37,15 @@ const STOP_WORDS = new Set([
   "a",
   "an",
   "and",
-  "about",
-  "data",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "can",
+  "did",
   "do",
+  "does",
   "for",
   "from",
   "how",
@@ -45,11 +55,28 @@ const STOP_WORDS = new Set([
   "it",
   "of",
   "on",
+  "or",
+  "that",
   "the",
+  "this",
   "to",
+  "was",
+  "were",
   "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
   "with",
+  "you",
+  "your",
 ]);
+
+const MAX_MOMENTS_PER_VIDEO = 2;
+const MIN_KEYWORD_LENGTH = 3;
+const MIN_EDIT_TOLERANCE_LENGTH = 5;
+const MAX_PHRASE_GAP = 2;
 
 type HydratedCourse = NonNullable<SearchHydration["courses"]>[number];
 type HydratedLesson = NonNullable<SearchHydration["lessons"]>[number];
@@ -59,6 +86,7 @@ type HydratedModule = NonNullable<HydratedCourse["modules"]>[number];
 type GroundedCandidate = {
   result: VerifiedSearchResult;
   modelIndex: number;
+  videoId?: string | null;
 };
 
 export type SearchProgressCallback = (phase: SearchStatusPhase) => void;
@@ -91,17 +119,209 @@ function stemToken(token: string) {
   return token;
 }
 
-function getSearchTokens(query: string) {
-  const tokens = unique(
-    normalizeText(query)
-      .split(" ")
-      .filter(Boolean)
-      .filter((token) => !STOP_WORDS.has(token))
-      .map(stemToken)
-      .filter(Boolean),
-  );
+function contentWords(value: string, stem: boolean) {
+  const words = normalizeText(value)
+    .split(" ")
+    .filter(Boolean)
+    .filter(
+      (word) => !STOP_WORDS.has(word) && word.length >= MIN_KEYWORD_LENGTH,
+    );
 
-  return tokens.length > 0 ? tokens : [normalizeText(query)].filter(Boolean);
+  return stem ? words.map(stemToken).filter(Boolean) : words;
+}
+
+function getSearchTokens(query: string) {
+  return unique(contentWords(query, true));
+}
+
+function withinOneEdit(left: string, right: string) {
+  if (Math.abs(left.length - right.length) > 1) {
+    return false;
+  }
+
+  let leftIndex = 0;
+  let rightIndex = 0;
+  let edits = 0;
+
+  while (leftIndex < left.length && rightIndex < right.length) {
+    if (left[leftIndex] === right[rightIndex]) {
+      leftIndex += 1;
+      rightIndex += 1;
+      continue;
+    }
+
+    edits += 1;
+
+    if (edits > 1) {
+      return false;
+    }
+
+    if (left.length > right.length) {
+      leftIndex += 1;
+    } else if (left.length < right.length) {
+      rightIndex += 1;
+    } else {
+      leftIndex += 1;
+      rightIndex += 1;
+    }
+  }
+
+  if (leftIndex < left.length || rightIndex < right.length) {
+    edits += 1;
+  }
+
+  return edits <= 1;
+}
+
+function tokensMatch(left: string, right: string) {
+  if (left === right) {
+    return true;
+  }
+
+  const shorter = left.length <= right.length ? left : right;
+  const longer = left.length <= right.length ? right : left;
+
+  if (shorter.length >= MIN_KEYWORD_LENGTH && longer.startsWith(shorter)) {
+    return true;
+  }
+
+  return (
+    shorter.length >= MIN_EDIT_TOLERANCE_LENGTH &&
+    longer.length >= MIN_EDIT_TOLERANCE_LENGTH &&
+    withinOneEdit(shorter, longer)
+  );
+}
+
+function hasPhraseSequence(haystack: string[], needles: string[]) {
+  if (needles.length === 0) {
+    return false;
+  }
+
+  for (let start = 0; start < haystack.length; start += 1) {
+    let needleIndex = 0;
+    let gaps = 0;
+
+    for (
+      let index = start;
+      index < haystack.length && needleIndex < needles.length;
+      index += 1
+    ) {
+      if (tokensMatch(haystack[index], needles[needleIndex])) {
+        needleIndex += 1;
+        gaps = 0;
+        continue;
+      }
+
+      gaps += 1;
+
+      if (gaps > MAX_PHRASE_GAP) {
+        break;
+      }
+    }
+
+    if (needleIndex === needles.length) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function scoreTextMatch(value: string, query: string) {
+  const normalizedValue = normalizeText(value);
+  const normalizedQuery = normalizeText(query);
+  const contentPhrase = contentWords(query, false).join(" ");
+  const queryTokens = getSearchTokens(query);
+  const valueTokens = contentWords(value, true);
+
+  let score = 0;
+
+  if (normalizedQuery && normalizedValue.includes(normalizedQuery)) {
+    score += 1_600;
+  }
+
+  if (contentPhrase && normalizedValue.includes(contentPhrase)) {
+    score += 1_000;
+  }
+
+  if (queryTokens.length > 1 && hasPhraseSequence(valueTokens, queryTokens)) {
+    score += 600;
+  }
+
+  const matchedTokens = queryTokens.filter((token) =>
+    valueTokens.some((valueToken) => tokensMatch(token, valueToken)),
+  ).length;
+
+  score += matchedTokens * 120;
+
+  if (queryTokens.length > 1 && matchedTokens === queryTokens.length) {
+    score += 200;
+  }
+
+  return { score, matchedTokens, tokenCount: queryTokens.length };
+}
+
+function hasRelevantMatch(match: ReturnType<typeof scoreTextMatch>) {
+  if (match.tokenCount === 0) {
+    return match.score > 0;
+  }
+
+  const requiredTokens =
+    match.tokenCount > 3
+      ? Math.max(2, Math.ceil(match.tokenCount * 0.7))
+      : match.tokenCount;
+  return match.matchedTokens >= requiredTokens || match.score >= 1_000;
+}
+
+type KeywordPlacement = {
+  courseId?: string | null;
+  lessonId?: string | null;
+  modules?: Array<{
+    _key?: string | null;
+    lessonIds?: Array<string | null> | null;
+  } | null> | null;
+  placements?: Array<KeywordPlacement | null> | null;
+};
+
+type KeywordMatch = {
+  kind?: string | null;
+  lessonId?: string | null;
+  videoId?: string | null;
+  chapterStarts?: Array<number | null> | null;
+  chunkStarts?: Array<number | null> | null;
+  placements?: Array<KeywordPlacement | null> | null;
+};
+
+function selectorKey(selector: SearchSelector) {
+  return JSON.stringify([
+    selector.kind,
+    selector.courseId,
+    selector.moduleKey,
+    selector.lessonId,
+    selector.kind === "video" ? selector.videoId : null,
+    selector.kind === "video" ? selector.startSeconds : null,
+    selector.kind === "video" ? selector.matchSource : null,
+  ]);
+}
+
+function findModuleKey(placement: KeywordPlacement, lessonId: string) {
+  for (const courseModule of placement.modules ?? []) {
+    if (
+      courseModule?._key &&
+      (courseModule.lessonIds ?? []).includes(lessonId)
+    ) {
+      return courseModule._key;
+    }
+  }
+
+  return null;
+}
+
+function nonNegativeIntegerStarts(starts: Array<number | null> | null | undefined) {
+  return (starts ?? []).filter(
+    (start): start is number =>
+      typeof start === "number" && Number.isInteger(start) && start >= 0,
+  );
 }
 
 async function getKeywordFallbackSelectors(query: string) {
@@ -111,47 +331,121 @@ async function getKeywordFallbackSelectors(query: string) {
     return [];
   }
 
-  const matches = await getKeywordSearchSelectors(terms);
+  const matches = (await getKeywordSearchSelectors(terms)) as KeywordMatch[];
   const selectors: SearchSelector[] = [];
+  const seen = new Set<string>();
+  const addSelector = (candidate: SearchSelector) => {
+    const parsed =
+      candidate.kind === "lesson"
+        ? lessonSelectorSchema.safeParse(candidate)
+        : videoSelectorSchema.safeParse(candidate);
+
+    if (!parsed.success) {
+      return;
+    }
+
+    const selector = parsed.data;
+    const key = selectorKey(selector);
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    selectors.push(selector);
+  };
 
   for (const match of matches) {
-    if (!match.lessonId) {
+    if (!match?.placements) {
       continue;
     }
 
-    for (const placement of match.placements ?? []) {
-      if (!placement?.courseId) {
+    if (match.kind === "lesson") {
+      const lessonId = match.lessonId;
+
+      if (!lessonId) {
         continue;
       }
 
-      const courseModule = (placement.modules ?? []).find(
-        (module) =>
-          module?._key &&
-          (module.lessonIds ?? []).includes(match.lessonId as string),
-      );
+      for (const placement of match.placements) {
+        if (!placement?.courseId) {
+          continue;
+        }
 
-      if (!courseModule?._key) {
+        const moduleKey = findModuleKey(placement, lessonId);
+
+        if (!moduleKey) {
+          continue;
+        }
+
+        addSelector({
+          kind: "lesson",
+          courseId: placement.courseId,
+          moduleKey,
+          lessonId,
+        });
+      }
+
+      continue;
+    }
+
+    if (match.kind !== "video" || !match.videoId) {
+      continue;
+    }
+
+    const chapterStarts = nonNegativeIntegerStarts(match.chapterStarts);
+    const chunkStarts = nonNegativeIntegerStarts(match.chunkStarts);
+
+    if (chapterStarts.length === 0 && chunkStarts.length === 0) {
+      continue;
+    }
+
+    for (const lessonPlacement of match.placements) {
+      const lessonId = lessonPlacement?.lessonId;
+
+      if (!lessonId) {
         continue;
       }
 
-      selectors.push({
-        kind: "lesson",
-        courseId: placement.courseId,
-        moduleKey: courseModule._key,
-        lessonId: match.lessonId,
-      });
+      for (const placement of lessonPlacement.placements ?? []) {
+        if (!placement?.courseId) {
+          continue;
+        }
+
+        const moduleKey = findModuleKey(placement, lessonId);
+
+        if (!moduleKey) {
+          continue;
+        }
+
+        for (const startSeconds of chapterStarts) {
+          addSelector({
+            kind: "video",
+            courseId: placement.courseId,
+            moduleKey,
+            lessonId,
+            videoId: match.videoId,
+            startSeconds,
+            matchSource: "chapter",
+          });
+        }
+
+        for (const startSeconds of chunkStarts) {
+          addSelector({
+            kind: "video",
+            courseId: placement.courseId,
+            moduleKey,
+            lessonId,
+            videoId: match.videoId,
+            startSeconds,
+            matchSource: "transcript",
+          });
+        }
+      }
     }
   }
 
   return selectors;
-}
-
-function countTokenHits(value: string, tokens: string[]) {
-  const normalized = normalizeText(value);
-  return tokens.reduce(
-    (count, token) => count + Number(normalized.includes(token)),
-    0,
-  );
 }
 
 function summarize(value: string | null | undefined, maxLength = 240) {
@@ -301,7 +595,6 @@ function deriveClipLength(
 
 function lessonCandidate(
   query: string,
-  tokens: string[],
   selector: SearchSelector,
   relationship: NonNullable<ReturnType<typeof resolveRelationship>>,
   modelIndex: number,
@@ -311,9 +604,9 @@ function lessonCandidate(
   }
 
   const evidence = lessonEvidence(relationship);
-  const tokenHits = countTokenHits(evidence, tokens);
+  const match = scoreTextMatch(evidence, query);
 
-  if (tokenHits === 0) {
+  if (!hasRelevantMatch(match)) {
     return null;
   }
 
@@ -321,6 +614,7 @@ function lessonCandidate(
   const normalizedTitle = normalizeText(relationship.lesson.title ?? "");
   const exactTitle =
     normalizedQuery.length > 0 && normalizedTitle.includes(normalizedQuery);
+  const titleMatch = scoreTextMatch(relationship.lesson.title ?? "", query);
   const description =
     summarize(relationship.lesson.notesText) ||
     summarize(relationship.module.summary) ||
@@ -333,7 +627,10 @@ function lessonCandidate(
     result: {
       kind: "lesson",
       id: `lesson:${relationship.course._id}:${relationship.module._key}:${relationship.lesson._id}`,
-      relevance: (exactTitle ? 4_000 : 2_000) + Math.min(tokenHits, 99),
+      relevance:
+        (exactTitle ? 4_200 : 1_800) +
+        match.score +
+        Math.round(titleMatch.score * 1.5),
       ...base,
       description,
       href: `/lessons/${encodeURIComponent(base.lesson.slug)}`,
@@ -345,7 +642,7 @@ function lessonCandidate(
 }
 
 function videoCandidate(
-  tokens: string[],
+  query: string,
   selector: Extract<SearchSelector, { kind: "video" }>,
   relationship: NonNullable<ReturnType<typeof resolveRelationship>>,
   video: HydratedVideo | undefined,
@@ -379,9 +676,9 @@ function videoCandidate(
     return null;
   }
 
-  const tokenHits = countTokenHits(sourceText, tokens);
+  const match = scoreTextMatch(sourceText, query);
 
-  if (tokenHits === 0) {
+  if (!hasRelevantMatch(match)) {
     return null;
   }
 
@@ -405,12 +702,12 @@ function videoCandidate(
 
   return {
     modelIndex,
+    videoId: video._id,
     result: {
       kind: "video",
       id: `video:${relationship.lesson._id}:${video._id}:${selector.startSeconds}`,
       relevance:
-        (selector.matchSource === "chapter" ? 3_000 : 1_000) +
-        Math.min(tokenHits, 99),
+        (selector.matchSource === "chapter" ? 3_200 : 900) + match.score,
       ...base,
       description:
         selector.matchSource === "transcript"
@@ -432,9 +729,21 @@ function videoCandidate(
   };
 }
 
+function compareCandidates(
+  left: GroundedCandidate,
+  right: GroundedCandidate,
+) {
+  return (
+    right.result.relevance - left.result.relevance ||
+    left.modelIndex - right.modelIndex ||
+    left.result.id.localeCompare(right.result.id)
+  );
+}
+
 async function groundSearchPlan(
   query: string,
   selectors: SearchSelector[],
+  searchSource: SearchSource,
 ): Promise<SearchResponse> {
   if (selectors.length === 0) {
     return searchResponseSchema.parse({
@@ -443,6 +752,7 @@ async function groundSearchPlan(
       courseCount: 0,
       videoResultCount: 0,
       lessonResultCount: 0,
+      searchSource,
       results: [],
     });
   }
@@ -470,7 +780,6 @@ async function groundSearchPlan(
   const videos = new Map(
     (hydration.videos ?? []).map((video) => [video._id, video]),
   );
-  const tokens = getSearchTokens(query);
   const relationships = new Map<
     number,
     NonNullable<ReturnType<typeof resolveRelationship>>
@@ -499,13 +808,7 @@ async function groundSearchPlan(
     }
 
     if (selector.kind === "lesson") {
-      const candidate = lessonCandidate(
-        query,
-        tokens,
-        selector,
-        relationship,
-        index,
-      );
+      const candidate = lessonCandidate(query, selector, relationship, index);
 
       if (candidate) {
         candidates.push(candidate);
@@ -516,7 +819,7 @@ async function groundSearchPlan(
 
     if (selector.matchSource === "chapter") {
       const candidate = videoCandidate(
-        tokens,
+        query,
         selector,
         relationship,
         videos.get(selector.videoId),
@@ -546,7 +849,7 @@ async function groundSearchPlan(
     }
 
     const candidate = videoCandidate(
-      tokens,
+      query,
       selector,
       relationship,
       videos.get(selector.videoId),
@@ -563,23 +866,36 @@ async function groundSearchPlan(
   for (const candidate of candidates) {
     const existing = deduplicated.get(candidate.result.id);
 
-    if (
-      !existing ||
-      candidate.result.relevance > existing.result.relevance ||
-      (candidate.result.relevance === existing.result.relevance &&
-        candidate.modelIndex < existing.modelIndex)
-    ) {
+    if (!existing || compareCandidates(candidate, existing) < 0) {
       deduplicated.set(candidate.result.id, candidate);
     }
   }
 
-  const results = [...deduplicated.values()]
-    .sort(
-      (left, right) =>
-        right.result.relevance - left.result.relevance ||
-        left.modelIndex - right.modelIndex ||
-        left.result.id.localeCompare(right.result.id),
-    )
+  const ranked = [...deduplicated.values()].sort(compareCandidates);
+  const momentCounts = new Map<string, number>();
+  const selectedVideos: GroundedCandidate[] = [];
+  const selectedLessons: GroundedCandidate[] = [];
+
+  for (const candidate of ranked) {
+    if (candidate.result.kind === "lesson") {
+      selectedLessons.push(candidate);
+      continue;
+    }
+
+    const key = candidate.videoId ?? candidate.result.id;
+    const count = momentCounts.get(key) ?? 0;
+
+    if (count >= MAX_MOMENTS_PER_VIDEO) {
+      continue;
+    }
+
+    momentCounts.set(key, count + 1);
+    selectedVideos.push(candidate);
+  }
+
+  const results = [...selectedVideos, ...selectedLessons]
+    .sort(compareCandidates)
+    .slice(0, SEARCH_RESULT_LIMIT)
     .map(({ result }) => result);
   const videoResultCount = results.filter(
     (result) => result.kind === "video",
@@ -592,6 +908,7 @@ async function groundSearchPlan(
     courseCount: new Set(results.map((result) => result.course.id)).size,
     videoResultCount,
     lessonResultCount,
+    searchSource,
     results,
   });
 }
@@ -645,12 +962,23 @@ export async function searchVertex(
           } satisfies GoogleLanguageModelOptions,
         },
       });
+      const usedMcpTools =
+        result.toolCalls.length > 0 ||
+        result.staticToolCalls.length > 0 ||
+        result.dynamicToolCalls.length > 0;
+
+      if (!usedMcpTools) {
+        throw new Error("Search planner did not query Sanity Context.");
+      }
+
       const plan: SearchPlan = result.output;
+      const primarySelectors = normalizeSearchSelectors(plan.matches);
 
       startGrounding();
       const primaryResults = await groundSearchPlan(
         query,
-        normalizeSearchSelectors(plan.matches),
+        primarySelectors,
+        "mcp",
       );
 
       if (primaryResults.total > 0) {
@@ -661,13 +989,16 @@ export async function searchVertex(
         throw error;
       }
 
-      console.warn("Primary intelligent search unavailable; using keyword fallback");
+      console.warn(
+        "Primary intelligent search unavailable; using keyword fallback",
+      );
     }
 
     startGrounding();
     return await groundSearchPlan(
       query,
       await getKeywordFallbackSelectors(query),
+      "fallback",
     );
   } finally {
     await connection?.client.close();

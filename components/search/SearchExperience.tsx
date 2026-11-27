@@ -12,6 +12,7 @@ import {
   SEARCH_QUERY_MIN_LENGTH,
   searchStreamEventSchema,
   type SearchResponse,
+  type SearchSource,
   type SearchStatusPhase,
   type VerifiedSearchResult,
 } from "@/lib/search/schema";
@@ -52,6 +53,11 @@ const PHASE_LABELS: Record<SearchStatusPhase, string> = {
   connecting: "Connecting to your learning library…",
   searching: "Searching lessons and video moments…",
   grounding: "Verifying every result…",
+};
+
+const SOURCE_LABELS: Record<SearchSource, string> = {
+  mcp: "Gemini + Sanity MCP",
+  fallback: "Keyword Fallback",
 };
 
 function requestReducer(
@@ -384,12 +390,23 @@ export function SearchExperience({ query }: SearchExperienceProps) {
                   ? "No matching lessons"
                   : `Found ${state.data.total} ${state.data.total === 1 ? "result" : "results"}`}
               </h2>
-              {state.data.total > 0 ? (
-                <p className="mt-1 text-[13px] text-[#596171]">
-                  Across {state.data.courseCount}{" "}
-                  {state.data.courseCount === 1 ? "course" : "courses"}
-                </p>
-              ) : null}
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                {state.data.total > 0 ? (
+                  <p className="text-[13px] text-[#596171]">
+                    Across {state.data.courseCount}{" "}
+                    {state.data.courseCount === 1 ? "course" : "courses"}
+                  </p>
+                ) : null}
+                <span
+                  className={`inline-flex items-center rounded-[6px] border px-2.5 py-1 font-sans text-[11px] font-semibold normal-case tracking-[0.02em] ${
+                    state.data.searchSource === "mcp"
+                      ? "border-transparent bg-primary-100 text-primary-500"
+                      : "border-neutral-200 bg-neutral-100 text-neutral-600"
+                  }`}
+                >
+                  {SOURCE_LABELS[state.data.searchSource]}
+                </span>
+              </div>
             </div>
 
             {state.data.total > 1 ? (

@@ -2,6 +2,9 @@ import { z } from "zod";
 
 export const SEARCH_QUERY_MIN_LENGTH = 2;
 export const SEARCH_QUERY_MAX_LENGTH = 200;
+export const SEARCH_RESULT_LIMIT = 15;
+
+export const searchSourceSchema = z.enum(["mcp", "fallback"]);
 
 export const searchRequestSchema = z
   .object({
@@ -132,6 +135,7 @@ export const searchResponseSchema = z
     courseCount: z.number().int().nonnegative(),
     videoResultCount: z.number().int().nonnegative(),
     lessonResultCount: z.number().int().nonnegative(),
+    searchSource: searchSourceSchema,
     results: z.array(verifiedSearchResultSchema),
   })
   .strict();
@@ -169,6 +173,7 @@ export type SearchSelector =
   | z.infer<typeof lessonSelectorSchema>
   | z.infer<typeof videoSelectorSchema>;
 export type SearchResponse = z.infer<typeof searchResponseSchema>;
+export type SearchSource = z.infer<typeof searchSourceSchema>;
 export type VerifiedSearchResult = z.infer<typeof verifiedSearchResultSchema>;
 export type VerifiedLessonResult = z.infer<typeof verifiedLessonResultSchema>;
 export type VerifiedVideoResult = z.infer<typeof verifiedVideoResultSchema>;

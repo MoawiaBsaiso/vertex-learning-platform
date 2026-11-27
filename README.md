@@ -59,3 +59,19 @@ npm run typegen
 ```
 
 The script writes `studio/schema.json` with `studio/scripts/extract-schema.ts`, then runs `sanity typegen generate`. Commit the generated types.
+
+## Video ingestion
+
+The offline CLI builds internal `video` lookup documents from published lesson URLs. It is a Studio-side tool and never runs during a web request.
+
+Add `SANITY_API_READ_TOKEN` and `SANITY_API_WRITE_TOKEN` to `studio/.env.local`, then run:
+
+```bash
+npm --prefix studio run ingest:videos -- --limit 2
+npm --prefix studio run ingest:videos -- --video-url "https://www.youtube.com/watch?v=GErEgIOMy_4"
+npm --prefix studio run ingest:videos -- --video-url "https://www.youtube.com/watch?v=GErEgIOMy_4" --write
+```
+
+Dry-run is the default and writes nothing. `--write` requires `SANITY_API_WRITE_TOKEN` and should only be used after review. Raw provider snapshots and the run report are written to gitignored `studio/.video-ingestion/`.
+
+YouTube transcripts and watch-page chapters are supported. Vimeo, Bunny, and unknown providers are detected and skipped; this does not add Vimeo/Bunny caption ingestion or Bunny seek support.
