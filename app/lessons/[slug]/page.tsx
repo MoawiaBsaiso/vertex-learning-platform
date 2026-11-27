@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { LessonViewed } from "@/components/analytics/LessonViewed";
+import { LessonCompleted } from "@/components/analytics/LessonCompleted";
 import { BookmarkButton } from "@/components/course/BookmarkButton";
 import {
   ArrowLeftIcon,
@@ -129,6 +130,14 @@ async function LessonPageContent({ params }: LessonPageProps) {
 
         <main>
           <LessonViewed
+            lessonId={lesson._id}
+            lessonSlug={slug}
+            lessonTitle={lesson.title ?? slug}
+            courseId={context?.course._id ?? ""}
+            courseSlug={context?.course.slug ?? ""}
+          />
+
+          <LessonCompleted
             lessonId={lesson._id}
             lessonSlug={slug}
             lessonTitle={lesson.title ?? slug}

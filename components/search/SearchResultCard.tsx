@@ -72,6 +72,15 @@ function captureResultClick(result: VerifiedSearchResult, rank: number) {
   });
 }
 
+export function captureSearchResultOpened(result: VerifiedSearchResult, rank: number) {
+  posthog.capture("search_result_opened", {
+    result_kind: result.kind,
+    result_rank: rank,
+    lesson_id: result.lesson.id,
+    course_id: result.course.id,
+  });
+}
+
 export function SearchResultCard({ result, rank }: SearchResultCardProps) {
   const lessonMeta = `Lesson ${result.lesson.label} in ${result.module.title}`;
 
@@ -130,7 +139,10 @@ export function SearchResultCard({ result, rank }: SearchResultCardProps) {
               </span>
               <Link
                 href={result.href}
-                onClick={() => captureResultClick(result, rank)}
+                onClick={() => {
+                  captureResultClick(result, rank);
+                  captureSearchResultOpened(result, rank);
+                }}
                 className="inline-flex items-center gap-2 rounded-sm bg-primary-500 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2"
               >
                 <PlayCircleIcon size={16} />
@@ -183,7 +195,10 @@ export function SearchResultCard({ result, rank }: SearchResultCardProps) {
       <div className="mt-5 flex justify-end">
         <Link
           href={result.href}
-          onClick={() => captureResultClick(result, rank)}
+          onClick={() => {
+            captureResultClick(result, rank);
+            captureSearchResultOpened(result, rank);
+          }}
           className="inline-flex items-center gap-2 rounded-sm text-[13px] font-semibold text-primary-600 transition-colors hover:text-[#C84B0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-4"
         >
           View lesson
