@@ -49,6 +49,7 @@ studio/node_modules/
 studio/.sanity/
 studio/dist/
 studio/schema.json
+studio/.video-ingestion/
 
 # agent skill mirrors (canonical skills live in .agents/skills)
 /.claude/
